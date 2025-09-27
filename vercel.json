@@ -1,8 +1,8 @@
 {
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/:path*",
-      "destination": "/src/worker/index.ts"
+      "src": "/api/(.*)",
+      "dest": "/src/worker/index.ts"
     }
   ]
 }
