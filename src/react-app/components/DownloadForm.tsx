@@ -6,6 +6,14 @@ interface DownloadFormProps {
   onVideoData: (data: VideoData['data']) => void;
 }
 
+// Helper to get error message
+const getErrorMessage = (error: any): string => {
+  if (!error) return 'Error desconocido';
+  if (typeof error === 'string') return error;
+  if (typeof error.message === 'string') return error.message;
+  return 'Ocurrió un error inesperado';
+};
+
 export default function DownloadForm({ onVideoData }: DownloadFormProps) {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,7 +46,6 @@ export default function DownloadForm({ onVideoData }: DownloadFormProps) {
         cache: 'no-store'
       });
 
-      // Read body exactly once
       const raw = await response.text();
       let data: VideoData | null = null;
       try {
@@ -48,7 +55,7 @@ export default function DownloadForm({ onVideoData }: DownloadFormProps) {
       }
 
       if (!response.ok) {
-        setError((data && data.error) || `Error del servidor (${response.status})`);
+        setError(getErrorMessage((data && data.error) || `Error del servidor (${response.status})`));
         return;
       }
 
@@ -56,7 +63,7 @@ export default function DownloadForm({ onVideoData }: DownloadFormProps) {
         onVideoData(data.data);
         setUrl('');
       } else {
-        setError((data && data.error) || 'Error al procesar el video');
+        setError(getErrorMessage((data && data.error) || 'Error al procesar el video'));
       }
     } catch (err) {
       setError('Error de conexión. Por favor intenta de nuevo.');
