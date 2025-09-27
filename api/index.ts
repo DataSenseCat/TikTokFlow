@@ -8,16 +8,14 @@ const app = new Hono().basePath('/api');
 
 app.use('*', cors({ origin: '*' }));
 
-app.get('/health', (c) => c.json({ status: 'ok' }));
-
 app.post('/download', zValidator('json', DownloadRequestSchema), async (c) => {
   try {
     const { url } = c.req.valid('json');
     const apiKey = process.env.RAPIDAPI_KEY;
 
     if (!apiKey) {
-      console.error('CRITICAL: RAPIDAPI_KEY is not set in Vercel environment variables.');
-      return c.json<VideoData>({ success: false, error: 'La clave de la API no está configurada en el servidor.' }, 500);
+      console.error('FATAL: RAPIDAPI_KEY environment variable is not set.');
+      return c.json<VideoData>({ success: false, error: 'Error del Servidor: La clave de API no está configurada.' }, 500);
     }
 
     const encodedUrl = encodeURIComponent(url);
@@ -31,55 +29,54 @@ app.post('/download', zValidator('json', DownloadRequestSchema), async (c) => {
       }
     });
 
-    let data;
+    const responseText = await response.text();
+    let data: any;
+
     try {
-      data = await response.json() as any;
-    } catch (jsonError) {
-      console.error('[JSON PARSE ERROR]', 'The external API returned a non-JSON response, even with a 200 OK status.');
-      return c.json<VideoData>({ success: false, error: 'La API externa devolvió una respuesta con formato incorrecto.' }, 502); // 502 Bad Gateway
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('External API did not return valid JSON:', responseText);
+      return c.json<VideoData>({ success: false, error: `La API externa devolvió una respuesta inválida (código: ${response.status})` }, 502);
     }
 
     if (!response.ok) {
-      const errorMessage = data?.message || response.statusText || 'Error desconocido de la API externa.';
-      if (response.status === 403) {
-        const specificError = errorMessage.includes('not subscribed') 
-            ? 'No estás suscrito a esta API. Revisa tu suscripción en RapidAPI.'
-            : 'Clave de API inválida o sin permisos. Verifica tu RAPIDAPI_KEY.';
-        return c.json<VideoData>({ success: false, error: specificError }, 403);
-      }
-      if (response.status === 429) {
-        return c.json<VideoData>({ success: false, error: 'Límite de solicitudes a la API externa excedido.' }, 429);
-      }
-      return c.json<VideoData>({ success: false, error: `Error de la API externa: ${errorMessage}` }, response.status as any);
+      const errorMsg = data?.message || data?.msg || 'Error desconocido de la API externa.';
+      return c.json<VideoData>({ success: false, error: `Error de la API externa: ${errorMsg}` }, response.status as any);
     }
 
-    if (data && data.code === 0 && data.data) {
-      const videoData = data.data;
-      
-      let authorName = 'Unknown';
-      if (videoData.author && typeof videoData.author === 'object') {
-        authorName = videoData.author.unique_id || videoData.author.nickname || authorName;
-      } else if (typeof videoData.author === 'string' && videoData.author) {
-        authorName = videoData.author;
-      }
-
-      return c.json<VideoData>({
-        success: true,
-        data: {
-          video_url: videoData.play || videoData.wmplay || videoData.hdplay || '',
-          title: String(videoData.title || videoData.desc || 'TikTok Video'),
-          author: String(authorName),
-          duration: Number(videoData.duration) || 0,
-          thumbnail: videoData.cover || videoData.origin_cover || videoData.dynamic_cover || ''
-        }
-      });
-    } else {
-      return c.json<VideoData>({ success: false, error: data.msg || 'URL de video inválida o video no encontrado' }, 400);
+    if (data.code !== 0 || !data.data) {
+      return c.json<VideoData>({ success: false, error: data.msg || 'La API externa no pudo procesar la URL.' }, 400);
     }
 
-  } catch (error) {
-    console.error('[SERVER CRASH]', error);
-    return c.json<VideoData>({ success: false, error: 'Error interno del servidor. Revisa los logs de Vercel.' }, 500);
+    const videoData = data.data;
+    const videoUrl = videoData.play || videoData.wmplay || videoData.hdplay;
+
+    if (typeof videoUrl !== 'string' || !videoUrl) {
+      return c.json<VideoData>({ success: false, error: 'El video fue procesado, pero la API no devolvió una URL de descarga.' }, 404);
+    }
+
+    const author = videoData.author;
+    const authorName = typeof author === 'object' ? (author.unique_id || author.nickname) : (typeof author === 'string' ? author : 'Autor Desconocido');
+    const title = videoData.title || videoData.desc || 'Video de TikTok';
+    const thumbnail = videoData.cover || videoData.origin_cover || videoData.dynamic_cover;
+
+    return c.json<VideoData>({
+      success: true,
+      data: {
+        video_url: videoUrl,
+        title: String(title),
+        author: String(authorName),
+        duration: Number(videoData.duration) || 0,
+        thumbnail: String(thumbnail || ''),
+      }
+    });
+
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      return c.json<VideoData>({ success: false, error: `Petición inválida: ${error.errors[0]?.message}` }, 400);
+    }
+    console.error('[FATAL_SERVER_ERROR]', error);
+    return c.json<VideoData>({ success: false, error: 'Ha ocurrido un error fatal e inesperado en el servidor.' }, 500);
   }
 });
 
