@@ -1,26 +1,19 @@
-import path from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { cloudflare } from "@cloudflare/vite-plugin";
+import path from "path";
+import { fileURLToPath } from "url";
 
-export default defineConfig(() => {
-  const plugins = [react()];
-  if (process.env.BUILD_TARGET === 'cloudflare') {
-    plugins.push(cloudflare());
-  }
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-  return {
-    plugins,
-    server: {
-      allowedHosts: true,
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    allowedHosts: ["*"],
+  },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
     },
-    build: {
-      chunkSizeWarningLimit: 5000,
-    },
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "./src"),
-      },
-    },
-  };
+  },
 });
