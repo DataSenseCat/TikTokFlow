@@ -10,6 +10,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-router": "^7.5.3",
+    "react-router-dom": "^7.5.3",
     "zod": "^3.24.3"
   },
   "devDependencies": {

@@ -32,17 +32,31 @@ export default function DownloadForm({ onVideoData }: DownloadFormProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({ url: url.trim() }),
+        cache: 'no-store'
       });
 
-      const data: VideoData = await response.json();
+      // Read body exactly once
+      const raw = await response.text();
+      let data: VideoData | null = null;
+      try {
+        data = JSON.parse(raw) as VideoData;
+      } catch {
+        data = { success: false, error: raw || 'Respuesta inválida del servidor' } as VideoData;
+      }
 
-      if (data.success && data.data) {
+      if (!response.ok) {
+        setError((data && data.error) || `Error del servidor (${response.status})`);
+        return;
+      }
+
+      if (data && data.success && data.data) {
         onVideoData(data.data);
         setUrl('');
       } else {
-        setError(data.error || 'Error al procesar el video');
+        setError((data && data.error) || 'Error al procesar el video');
       }
     } catch (err) {
       setError('Error de conexión. Por favor intenta de nuevo.');
