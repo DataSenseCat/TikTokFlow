@@ -1,8 +1,1 @@
-{
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/src/worker/index.ts"
-    }
-  ]
-}
+{}
