@@ -1,0 +1,5 @@
+interface Env {
+  RAPIDAPI_KEY: string;
+  MOCHA_USERS_SERVICE_API_KEY: string;
+  MOCHA_USERS_SERVICE_API_URL: string;
+}
