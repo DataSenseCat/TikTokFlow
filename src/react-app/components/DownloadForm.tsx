@@ -38,12 +38,18 @@ export default function DownloadForm({ onVideoData }: DownloadFormProps) {
         cache: 'no-store'
       });
 
-      // Read body exactly once
-      const raw = await response.text();
+      // Read body exactly once: prefer JSON when available, fallback to text
+      const contentType = response.headers.get('content-type') || '';
       let data: VideoData | null = null;
-      try {
-        data = JSON.parse(raw) as VideoData;
-      } catch {
+
+      if (contentType.includes('application/json')) {
+        try {
+          data = (await response.json()) as VideoData;
+        } catch {
+          data = { success: false, error: 'Respuesta JSON inválida del servidor' } as VideoData;
+        }
+      } else {
+        const raw = await response.text();
         data = { success: false, error: raw || 'Respuesta inválida del servidor' } as VideoData;
       }
 
