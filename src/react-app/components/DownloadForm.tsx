@@ -38,19 +38,13 @@ export default function DownloadForm({ onVideoData }: DownloadFormProps) {
         cache: 'no-store'
       });
 
-      // Clone first to ensure we have a fresh readable body
-      const cloned = response.clone();
-
+      // Read body exactly once
+      const raw = await response.text();
       let data: VideoData | null = null;
       try {
-        data = await cloned.json();
+        data = JSON.parse(raw) as VideoData;
       } catch {
-        const text = await response.text();
-        try {
-          data = JSON.parse(text);
-        } catch {
-          data = { success: false, error: text || 'Respuesta inválida del servidor' } as VideoData;
-        }
+        data = { success: false, error: raw || 'Respuesta inválida del servidor' } as VideoData;
       }
 
       if (!response.ok) {
