@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { Download, Loader2, AlertCircle } from 'lucide-react';
-import { VideoData } from '@/shared/types';
+import { VideoData, VideoDetails } from '@/shared/types';
 
 interface DownloadFormProps {
-  onVideoData: (data: VideoData['data']) => void;
+  onVideoData: (data: VideoDetails) => void;
 }
 
-// Helper to get error message
 const getErrorMessage = (error: any): string => {
   if (!error) return 'Error desconocido';
   if (typeof error === 'string') return error;
@@ -22,13 +21,8 @@ export default function DownloadForm({ onVideoData }: DownloadFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!url.trim()) {
-      setError('Por favor ingresa una URL de TikTok');
-      return;
-    }
-
-    if (!url.includes('tiktok.com')) {
-      setError('Por favor ingresa una URL válida de TikTok');
+    if (!url.trim() || !url.includes('tiktok.com')) {
+      setError('Por favor, ingresa una URL válida de TikTok.');
       return;
     }
 
@@ -47,26 +41,28 @@ export default function DownloadForm({ onVideoData }: DownloadFormProps) {
       });
 
       const raw = await response.text();
-      let data: VideoData | null = null;
+      let data: VideoData;
+
       try {
         data = JSON.parse(raw) as VideoData;
       } catch {
-        data = { success: false, error: raw || 'Respuesta inválida del servidor' } as VideoData;
+        data = { success: false, error: raw || `El servidor devolvió una respuesta inválida (código: ${response.status})` };
       }
 
       if (!response.ok) {
-        setError(getErrorMessage((data && data.error) || `Error del servidor (${response.status})`));
+        const errorMessage = data && !data.success ? data.error : `Error del servidor (${response.status})`;
+        setError(getErrorMessage(errorMessage));
         return;
       }
 
-      if (data && data.success && data.data) {
+      if (data.success) {
         onVideoData(data.data);
         setUrl('');
       } else {
-        setError(getErrorMessage((data && data.error) || 'Error al procesar el video'));
+        setError(getErrorMessage(data.error || 'Error al procesar el video'));
       }
     } catch (err) {
-      setError('Error de conexión. Por favor intenta de nuevo.');
+      setError('Error de conexión. Por favor, intenta de nuevo.');
       console.error('Download error:', err);
     } finally {
       setLoading(false);
