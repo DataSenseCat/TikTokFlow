@@ -54,7 +54,12 @@ export default function DownloadForm({ onVideoData }: DownloadFormProps) {
       }
 
       if (!response.ok) {
-        setError((data && data.error) || `Error del servidor (${response.status})`);
+        const errMsg = typeof data?.error === 'string'
+          ? data.error
+          : (data && (data as any).error && typeof (data as any).error.message === 'string')
+            ? (data as any).error.message
+            : `Error del servidor (${response.status})`;
+        setError(errMsg);
         return;
       }
 
@@ -62,7 +67,10 @@ export default function DownloadForm({ onVideoData }: DownloadFormProps) {
         onVideoData(data.data);
         setUrl('');
       } else {
-        setError((data && data.error) || 'Error al procesar el video');
+        const errMsg = typeof data?.error === 'string'
+          ? data.error
+          : 'Error al procesar el video';
+        setError(errMsg);
       }
     } catch (err) {
       setError('Error de conexión. Por favor intenta de nuevo.');
