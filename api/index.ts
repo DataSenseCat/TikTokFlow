@@ -16,6 +16,7 @@ app.post('/download', zValidator('json', DownloadRequestSchema), async (c) => {
     const apiKey = process.env.RAPIDAPI_KEY;
 
     if (!apiKey) {
+      console.error('CRITICAL: RAPIDAPI_KEY is not set in Vercel environment variables.');
       return c.json<VideoData>({ success: false, error: 'La clave de la API no está configurada en el servidor.' }, 500);
     }
 
@@ -30,13 +31,16 @@ app.post('/download', zValidator('json', DownloadRequestSchema), async (c) => {
       }
     });
 
-    if (!response.ok) {
-      let errorMessage = response.statusText;
-      try {
-        const errorData = await response.json() as any;
-        if (errorData && errorData.message) errorMessage = errorData.message;
-      } catch (e) { /* Ignore if body is not JSON */ }
+    let data;
+    try {
+      data = await response.json() as any;
+    } catch (jsonError) {
+      console.error('[JSON PARSE ERROR]', 'The external API returned a non-JSON response, even with a 200 OK status.');
+      return c.json<VideoData>({ success: false, error: 'La API externa devolvió una respuesta con formato incorrecto.' }, 502); // 502 Bad Gateway
+    }
 
+    if (!response.ok) {
+      const errorMessage = data?.message || response.statusText || 'Error desconocido de la API externa.';
       if (response.status === 403) {
         const specificError = errorMessage.includes('not subscribed') 
             ? 'No estás suscrito a esta API. Revisa tu suscripción en RapidAPI.'
@@ -49,16 +53,13 @@ app.post('/download', zValidator('json', DownloadRequestSchema), async (c) => {
       return c.json<VideoData>({ success: false, error: `Error de la API externa: ${errorMessage}` }, response.status as any);
     }
 
-    const data = await response.json() as any;
-
     if (data && data.code === 0 && data.data) {
       const videoData = data.data;
       
       let authorName = 'Unknown';
-      // THIS IS THE FIX: Check for null before checking for object type
       if (videoData.author && typeof videoData.author === 'object') {
         authorName = videoData.author.unique_id || videoData.author.nickname || authorName;
-      } else if (videoData.author) {
+      } else if (typeof videoData.author === 'string' && videoData.author) {
         authorName = videoData.author;
       }
 
@@ -72,24 +73,13 @@ app.post('/download', zValidator('json', DownloadRequestSchema), async (c) => {
           thumbnail: videoData.cover || videoData.origin_cover || videoData.dynamic_cover || ''
         }
       });
-    } else if (data && (data.video_url || data.play)) {
-      return c.json<VideoData>({
-        success: true,
-        data: {
-          video_url: data.video_url || data.play || '',
-          title: String(data.title || data.desc || 'TikTok Video'),
-          author: String(data.author || data.username || 'Unknown'),
-          duration: Number(data.duration) || 0,
-          thumbnail: data.thumbnail || data.cover || data.origin_cover || ''
-        }
-      });
     } else {
       return c.json<VideoData>({ success: false, error: data.msg || 'URL de video inválida o video no encontrado' }, 400);
     }
 
   } catch (error) {
-    console.error('[SERVER ERROR]', error);
-    return c.json<VideoData>({ success: false, error: 'Error interno del servidor' }, 500);
+    console.error('[SERVER CRASH]', error);
+    return c.json<VideoData>({ success: false, error: 'Error interno del servidor. Revisa los logs de Vercel.' }, 500);
   }
 });
 
