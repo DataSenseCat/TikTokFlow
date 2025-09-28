@@ -2,8 +2,8 @@ import { Hono } from 'hono';
 import { handle } from 'hono/vercel';
 import { zValidator } from '@hono/zod-validator';
 import { cors } from 'hono/cors';
-// Import types from the local file, not from the frontend folder
-import { DownloadRequestSchema, VideoData } from './types';
+// The import MUST include the .js extension for Node.js ESM to work correctly.
+import { DownloadRequestSchema, VideoData } from './types.js';
 
 const app = new Hono().basePath('/api');
 
@@ -73,7 +73,6 @@ app.post('/download', zValidator('json', DownloadRequestSchema), async (c) => {
     });
 
   } catch (error: any) {
-    // This now correctly handles validation errors from Zod
     if (error.name === 'ZodError') {
       return c.json<VideoData>({ success: false, error: `Petición inválida: ${error.errors[0]?.message}` }, 400);
     }
@@ -82,7 +81,6 @@ app.post('/download', zValidator('json', DownloadRequestSchema), async (c) => {
   }
 });
 
-// This is a health check endpoint, useful for debugging
 app.get('/health', (c) => c.json({ status: 'ok' }));
 
 export const GET = handle(app);

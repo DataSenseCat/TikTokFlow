@@ -32,8 +32,8 @@
     "vite": "^6.3.6"
   },
   "scripts": {
-    "build": "vite build",
     "dev": "vite",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "build": "tsc -p tsconfig.node.json && vite build"
   }
 }
