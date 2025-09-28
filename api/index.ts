@@ -2,7 +2,8 @@ import { Hono } from 'hono';
 import { handle } from 'hono/vercel';
 import { zValidator } from '@hono/zod-validator';
 import { cors } from 'hono/cors';
-import { DownloadRequestSchema, VideoData } from '../src/shared/types';
+// Import types from the local file, not from the frontend folder
+import { DownloadRequestSchema, VideoData } from './types';
 
 const app = new Hono().basePath('/api');
 
@@ -72,6 +73,7 @@ app.post('/download', zValidator('json', DownloadRequestSchema), async (c) => {
     });
 
   } catch (error: any) {
+    // This now correctly handles validation errors from Zod
     if (error.name === 'ZodError') {
       return c.json<VideoData>({ success: false, error: `Petición inválida: ${error.errors[0]?.message}` }, 400);
     }
@@ -79,6 +81,9 @@ app.post('/download', zValidator('json', DownloadRequestSchema), async (c) => {
     return c.json<VideoData>({ success: false, error: 'Ha ocurrido un error fatal e inesperado en el servidor.' }, 500);
   }
 });
+
+// This is a health check endpoint, useful for debugging
+app.get('/health', (c) => c.json({ status: 'ok' }));
 
 export const GET = handle(app);
 export const POST = handle(app);
