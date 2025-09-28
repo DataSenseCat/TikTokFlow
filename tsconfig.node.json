@@ -1,20 +1,23 @@
 {
   "compilerOptions": {
+    // --- Essential settings for Vercel Serverless Functions ---
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "./dist", // Specifies where to output the compiled JS files
+    "esModuleInterop": true,
+    "strict": true,
+
+    // --- Project-specific settings ---
     "composite": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
-    "target": "ES2022",
-    "lib": ["ES2023"],
-    "module": "ESNext",
     "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "isolatedModules": true,
-    "moduleDetection": "force",
-    "noEmit": true,
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    
+    // --- Settings to disable ---
+    // "noEmit": false, // This is the default, so we can remove the line entirely.
+    // "allowImportingTsExtensions": false, // Not needed and can cause issues.
+    // "isolatedModules": false // Not required for backend build.
   },
-  "include": ["vite.config.ts"]
+  // CRITICAL: This tells TypeScript which files to compile for the backend.
+  "include": ["api/**/*.ts"]
 }
